@@ -24,7 +24,6 @@ export default function Navbar({
 
       <div className="main-navbar">
         <div className="container nav-inner">
-          <div style={{ color: "red", fontWeight: "bold" }}>TEST NAVBAR</div>
           <Link to="/" className="logo">
             {siteContent.nav.logo}
           </Link>
@@ -43,10 +42,16 @@ export default function Navbar({
             </a>
 
             {currentUser ? (
-              <button type="button" className="user-link" onClick={onLogout}>
-                <i className="fa-regular fa-circle-user"></i>
-                <span>{currentUser.name} (Logout)</span>
-              </button>
+              <>
+                <Link to="/account" className="user-link">
+                  <i className="fa-regular fa-circle-user"></i>
+                  <span>{currentUser.name}</span>
+                </Link>
+
+                <button type="button" className="signin-link" onClick={onLogout}>
+                  Logout
+                </button>
+              </>
             ) : (
               <button type="button" className="signin-link" onClick={onOpenAuth}>
                 <i className="fa-regular fa-circle-user"></i>

@@ -3,7 +3,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import QuickCart from "../components/QuickCart";
 import { getCart, saveCart, getCurrentUser } from "../utils/storage";
-import { fetchCustomers } from "../services/userServices";
+import { fetchUsers } from "../services/userServices";
 
 export default function CustomersPage() {
   const [cart, setCart] = useState(getCart());
@@ -15,15 +15,21 @@ export default function CustomersPage() {
   const currentUser = getCurrentUser();
 
   const cartCount = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.quantity, 0);
+    return cart.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
   }, [cart]);
 
   useEffect(() => {
     const loadCustomers = async () => {
-      setLoading(true);
-      const result = await fetchCustomers();
-      setCustomers(result.customers || []);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const result = await fetchUsers();
+        setCustomers(result.users || []);
+      } catch (error) {
+        console.error("loadCustomers error:", error);
+        setCustomers([]);
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadCustomers();
@@ -32,8 +38,8 @@ export default function CustomersPage() {
   const filteredCustomers = customers.filter((customer) => {
     const keyword = search.toLowerCase();
     return (
-      customer.name.toLowerCase().includes(keyword) ||
-      customer.email.toLowerCase().includes(keyword)
+      (customer.name || "").toLowerCase().includes(keyword) ||
+      (customer.email || "").toLowerCase().includes(keyword)
     );
   });
 
@@ -110,11 +116,11 @@ export default function CustomersPage() {
                   <tbody>
                     {filteredCustomers.length ? (
                       filteredCustomers.map((customer, index) => (
-                        <tr key={customer.id}>
+                        <tr key={customer._id || customer.id || index}>
                           <td>{index + 1}</td>
-                          <td>{customer.name}</td>
-                          <td>{customer.email}</td>
-                          <td>{customer.role}</td>
+                          <td>{customer.name || "No name"}</td>
+                          <td>{customer.email || "No email"}</td>
+                          <td>{customer.role || "customer"}</td>
                         </tr>
                       ))
                     ) : (

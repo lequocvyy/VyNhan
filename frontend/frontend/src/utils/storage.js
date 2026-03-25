@@ -14,6 +14,10 @@ export const saveCurrentUser = (user) => {
   localStorage.setItem("currentUser", JSON.stringify(user));
 };
 
+export const clearCurrentUser = () => {
+  localStorage.removeItem("currentUser");
+};
+
 export const getBuyNowItem = () => {
   return JSON.parse(localStorage.getItem("buyNowItem")) || null;
 };

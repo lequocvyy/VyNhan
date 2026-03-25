@@ -23,30 +23,45 @@ export default function AdminPage() {
   const currentUser = getCurrentUser();
 
   const cartCount = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.quantity, 0);
+    return cart.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
   }, [cart]);
 
   useEffect(() => {
     const loadAdminData = async () => {
-      setLoading(true);
+      try {
+        setLoading(true);
 
-      const [ordersResult, productsResult] = await Promise.all([
-        fetchOrders(),
-        fetchProducts()
-      ]);
+        const [ordersResult, productsResult] = await Promise.all([
+          fetchOrders(),
+          fetchProducts()
+        ]);
 
-      setOrders(ordersResult.orders || []);
-      setProducts(productsResult.products || []);
-      setLoading(false);
+        setOrders(ordersResult?.orders || []);
+        setProducts(productsResult?.products || []);
+      } catch (error) {
+        console.error("loadAdminData error:", error);
+        setOrders([]);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadAdminData();
   }, []);
 
-  const totalSales = orders.reduce((sum, order) => sum + order.total, 0);
+  const totalSales = orders.reduce(
+    (sum, order) => sum + (Number(order.total) || 0),
+    0
+  );
+
   const totalOrders = orders.length;
-  const pendingOrders = orders.filter((order) => order.status === "Pending").length;
-  const canceledOrders = orders.filter((order) => order.status === "Canceled").length;
+  const pendingOrders = orders.filter(
+    (order) => order.status === "Pending"
+  ).length;
+  const canceledOrders = orders.filter(
+    (order) => order.status === "Canceled"
+  ).length;
 
   const latestTransactions = [...orders]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -55,7 +70,7 @@ export default function AdminPage() {
   const productSummaryMap = {};
 
   orders.forEach((order) => {
-    order.items.forEach((item) => {
+    (order.items || []).forEach((item) => {
       if (!productSummaryMap[item.name]) {
         productSummaryMap[item.name] = {
           name: item.name,
@@ -64,8 +79,9 @@ export default function AdminPage() {
         };
       }
 
-      productSummaryMap[item.name].totalQty += item.quantity;
-      productSummaryMap[item.name].revenue += item.price * item.quantity;
+      productSummaryMap[item.name].totalQty += Number(item.quantity) || 0;
+      productSummaryMap[item.name].revenue +=
+        (Number(item.price) || 0) * (Number(item.quantity) || 0);
     });
   });
 
@@ -104,12 +120,19 @@ export default function AdminPage() {
 
       <main>
         {!currentUser || currentUser.role !== "admin" ? (
-          <section className="admin-denied container" style={{ padding: "40px 0" }}>
+          <section
+            className="admin-denied container"
+            style={{ padding: "40px 0" }}
+          >
             <h2>Access Denied</h2>
             <p>Chỉ tài khoản Admin mới được truy cập Dashboard.</p>
             <p>Hãy đăng nhập bằng:</p>
-            <p><strong>Email:</strong> admin@vnj.com</p>
-            <p><strong>Password:</strong> 123456</p>
+            <p>
+              <strong>Email:</strong> admin@vnj.com
+            </p>
+            <p>
+              <strong>Password:</strong> 123456
+            </p>
           </section>
         ) : loading ? (
           <section className="container" style={{ padding: "40px 0" }}>
@@ -120,28 +143,35 @@ export default function AdminPage() {
             <aside className="admin-sidebar">
               <div className="admin-menu-group">
                 <p className="admin-menu-title">Main menu</p>
-                <a href="#" className="admin-menu-item active">Dashboard</a>
-                
-                <Link to="/admin/orders" className="admin-menu-item">Order Management</Link>
-                <a href="/admin/customers" className="admin-menu-item">Customers</a>
-                <a href="/admin/coupons" className="admin-menu-item">Coupon Code</a>
-                <a href="#" className="admin-menu-item">Categories</a>
-                <a href="#" className="admin-menu-item">Transaction</a>
-                <a href="#" className="admin-menu-item">Brands</a>
+                <a href="#" className="admin-menu-item active">
+                  Dashboard
+                </a>
+
+                <Link to="/admin/orders" className="admin-menu-item">
+                  Order Management
+                </Link>
+                <Link to="/admin/customers" className="admin-menu-item">
+                  Customers
+                </Link>
+                <Link to="/admin/coupons" className="admin-menu-item">
+                  Coupon Code
+                </Link>
               </div>
 
               <div className="admin-menu-group">
                 <p className="admin-menu-title">Product</p>
-                <a href="#" className="admin-menu-item">Add Products</a>
-                <a href="#" className="admin-menu-item">Product Model</a>
-                <a href="#" className="admin-menu-item">Product List</a>
-                <a href="#" className="admin-menu-item">Product Reviews</a>
+                <Link to="/admin/products/add" className="admin-menu-item">
+                  Add Products
+                </Link>
+                
               </div>
 
               <div className="admin-menu-group">
                 <p className="admin-menu-title">Admin</p>
-                <a href="#" className="admin-menu-item">Admin role</a>
-                <a href="#" className="admin-menu-item">Doctor Authority</a>
+                <Link to="/admin/roles" className="admin-menu-item">
+  Admin role
+</Link>
+                
               </div>
             </aside>
 
@@ -149,9 +179,14 @@ export default function AdminPage() {
               <div className="admin-topbar">
                 <h2>Dashboard</h2>
                 <div className="admin-topbar-right">
-                  <input type="text" placeholder="Search data, users, or reports" />
+                  <input
+                    type="text"
+                    placeholder="Search data, users, or reports"
+                  />
                   <i className="fa-regular fa-bell"></i>
-                  <div className="admin-avatar">{currentUser.name.charAt(0)}</div>
+                  <div className="admin-avatar">
+                    {currentUser?.name?.charAt(0) || "A"}
+                  </div>
                 </div>
               </div>
 
@@ -172,7 +207,9 @@ export default function AdminPage() {
 
                     <div className="admin-stat-card">
                       <p>Pending / Canceled</p>
-                      <h3>{pendingOrders} / {canceledOrders}</h3>
+                      <h3>
+                        {pendingOrders} / {canceledOrders}
+                      </h3>
                       <span>Live from order storage</span>
                     </div>
                   </div>
@@ -210,12 +247,16 @@ export default function AdminPage() {
                       <tbody>
                         {latestTransactions.length ? (
                           latestTransactions.map((order, index) => (
-                            <tr key={order.id}>
+                            <tr key={order._id || order.id || index}>
                               <td>{index + 1}</td>
                               <td>{order.customerName}</td>
-                              <td>{new Date(order.createdAt).toLocaleString()}</td>
+                              <td>
+                                {order.createdAt
+                                  ? new Date(order.createdAt).toLocaleString()
+                                  : ""}
+                              </td>
                               <td>{order.status}</td>
-                              <td>{formatPrice(order.total)}</td>
+                              <td>{formatPrice(Number(order.total) || 0)}</td>
                             </tr>
                           ))
                         ) : (
@@ -245,14 +286,15 @@ export default function AdminPage() {
 
                       <tbody>
                         {bestSellingProducts.length ? (
-                          bestSellingProducts.map((item) => {
+                          bestSellingProducts.map((item, index) => {
                             const matchedProduct = products.find(
                               (p) => p.name === item.name
                             );
-                            const productImage = matchedProduct?.images?.[0] || "";
+                            const productImage =
+                              matchedProduct?.images?.[0] || "";
 
                             return (
-                              <tr key={item.name}>
+                              <tr key={item.name || index}>
                                 <td>
                                   <div className="admin-product-cell">
                                     <img src={productImage} alt={item.name} />
@@ -264,7 +306,9 @@ export default function AdminPage() {
                                 </td>
                                 <td>{item.totalQty}</td>
                                 <td>
-                                  <span className="admin-status in-stock">In Report</span>
+                                  <span className="admin-status in-stock">
+                                    In Report
+                                  </span>
                                 </td>
                                 <td>{formatPrice(item.revenue)}</td>
                               </tr>
@@ -272,7 +316,9 @@ export default function AdminPage() {
                           })
                         ) : (
                           <tr>
-                            <td colSpan="4">Chưa có dữ liệu sản phẩm bán chạy.</td>
+                            <td colSpan="4">
+                              Chưa có dữ liệu sản phẩm bán chạy.
+                            </td>
                           </tr>
                         )}
                       </tbody>
@@ -285,16 +331,30 @@ export default function AdminPage() {
                     <div className="admin-panel-header">
                       <h4>Users in last 30 minutes</h4>
                     </div>
-                    <h3 style={{ fontSize: "22px", margin: "0 0 6px", fontWeight: 800 }}>
+                    <h3
+                      style={{
+                        fontSize: "22px",
+                        margin: "0 0 6px",
+                        fontWeight: 800
+                      }}
+                    >
                       21.5K
                     </h3>
-                    <p style={{ fontSize: "10px", color: "#888", margin: "0 0 8px" }}>
+                    <p
+                      style={{
+                        fontSize: "10px",
+                        color: "#888",
+                        margin: "0 0 8px"
+                      }}
+                    >
                       Users per minute
                     </p>
                     <div className="admin-mini-chart">
-                      {[12, 18, 25, 15, 20, 30, 28, 35, 22, 18, 26].map((v, i) => (
-                        <span key={i} style={{ height: v }}></span>
-                      ))}
+                      {[12, 18, 25, 15, 20, 30, 28, 35, 22, 18, 26].map(
+                        (v, i) => (
+                          <span key={i} style={{ height: v }}></span>
+                        )
+                      )}
                     </div>
                     <button className="admin-black-btn">View Insight</button>
                   </div>
@@ -307,14 +367,18 @@ export default function AdminPage() {
 
                     <div className="admin-product-list">
                       {bestSellingProducts.length ? (
-                        bestSellingProducts.map((item) => {
+                        bestSellingProducts.map((item, index) => {
                           const matchedProduct = products.find(
                             (p) => p.name === item.name
                           );
-                          const productImage = matchedProduct?.images?.[0] || "";
+                          const productImage =
+                            matchedProduct?.images?.[0] || "";
 
                           return (
-                            <div className="admin-product-row" key={item.name}>
+                            <div
+                              className="admin-product-row"
+                              key={item.name || index}
+                            >
                               <div className="admin-product-info">
                                 <img src={productImage} alt={item.name} />
                                 <div>
@@ -342,9 +406,15 @@ export default function AdminPage() {
                     </div>
 
                     <div className="admin-category-list">
-                      <div className="admin-category-item">{formatPrice(totalSales)}</div>
-                      <div className="admin-category-item">Orders: {totalOrders}</div>
-                      <div className="admin-category-item">Role: {currentUser.role}</div>
+                      <div className="admin-category-item">
+                        {formatPrice(totalSales)}
+                      </div>
+                      <div className="admin-category-item">
+                        Orders: {totalOrders}
+                      </div>
+                      <div className="admin-category-item">
+                        Role: {currentUser.role}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -369,8 +439,8 @@ function getRevenueLast7Days(allOrders) {
     const key = d.toISOString().slice(0, 10);
 
     const dayRevenue = allOrders
-      .filter((order) => order.createdAt.slice(0, 10) === key)
-      .reduce((sum, order) => sum + order.total, 0);
+      .filter((order) => order.createdAt?.slice(0, 10) === key)
+      .reduce((sum, order) => sum + (Number(order.total) || 0), 0);
 
     result.push({
       label: `${d.getDate()}/${d.getMonth() + 1}`,

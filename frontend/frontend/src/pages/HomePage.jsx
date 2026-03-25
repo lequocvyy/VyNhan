@@ -5,8 +5,7 @@ import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import ProductCard from "../components/ProductCard";
 import { siteContent } from "../data/siteContent";
-import { getCart, getCurrentUser } from "../utils/storage";
-import { logoutUser } from "../services/authService";
+import { clearCurrentUser, getCart, getCurrentUser } from "../utils/storage";
 import { fetchProducts } from "../services/productService";
 
 export default function HomePage() {
@@ -34,6 +33,15 @@ export default function HomePage() {
     loadProducts();
   }, [selectedCategory]);
 
+  useEffect(() => {
+    const syncUser = () => {
+      setCurrentUser(getCurrentUser());
+    };
+
+    window.addEventListener("storage", syncUser);
+    return () => window.removeEventListener("storage", syncUser);
+  }, []);
+
   return (
     <>
       <Navbar
@@ -42,7 +50,7 @@ export default function HomePage() {
         onCartClick={() => setIsCartOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
         onLogout={() => {
-          logoutUser();
+          clearCurrentUser();
           setCurrentUser(null);
           alert("Bạn đã đăng xuất.");
         }}
@@ -128,8 +136,8 @@ export default function HomePage() {
                 <p>Loading products...</p>
               ) : (
                 products.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))
+  <ProductCard key={product._id || product.id} product={product} />
+))
               )}
             </div>
           </div>

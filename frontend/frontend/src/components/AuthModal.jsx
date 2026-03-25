@@ -17,47 +17,59 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
 
-    const result = await loginUser(loginEmail.trim(), loginPassword.trim());
+    try {
+      const result = await loginUser(loginEmail.trim(), loginPassword.trim());
 
-    if (!result.success) {
-      alert(result.message);
-      return;
+      if (!result.success) {
+        alert(result.message);
+        return;
+      }
+
+      saveCurrentUser(result.user);
+      alert(`Xin chào ${result.user.name} (${result.user.role})`);
+      onAuthSuccess(result.user);
+      onClose();
+
+      setLoginEmail("");
+      setLoginPassword("");
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("Không thể đăng nhập. Vui lòng thử lại.");
     }
-
-    saveCurrentUser(result.user);
-    alert(`Xin chào ${result.user.name} (${result.user.role})`);
-    onAuthSuccess(result.user);
-    onClose();
   };
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
 
-    if (!registerEmail.trim() || !registerPassword.trim()) {
+    if (!registerName.trim() || !registerEmail.trim() || !registerPassword.trim()) {
       alert("Vui lòng nhập đủ thông tin.");
       return;
     }
 
-    const result = await registerUser({
-      name: registerName.trim(),
-      email: registerEmail.trim(),
-      password: registerPassword.trim()
-    });
+    try {
+      const result = await registerUser({
+        name: registerName.trim(),
+        email: registerEmail.trim(),
+        password: registerPassword.trim()
+      });
 
-    if (!result.success) {
-      alert(result.message);
-      return;
+      if (!result.success) {
+        alert(result.message);
+        return;
+      }
+
+      saveCurrentUser(result.user);
+      alert(`Đăng ký thành công. Xin chào ${result.user.name}`);
+      onAuthSuccess(result.user);
+      onClose();
+
+      setRegisterName("");
+      setRegisterEmail("");
+      setRegisterPassword("");
+    } catch (error) {
+      console.error("Register error:", error);
+      alert("Không thể đăng ký. Vui lòng thử lại.");
     }
-
-    alert("Đăng ký thành công. Bây giờ bạn có thể đăng nhập.");
-
-    setActiveTab("login");
-    setLoginEmail(registerEmail);
-    setLoginPassword("");
-
-    setRegisterName("");
-    setRegisterEmail("");
-    setRegisterPassword("");
   };
 
   return (

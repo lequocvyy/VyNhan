@@ -28,33 +28,108 @@ export default function ProductPage() {
   const [quantity, setQuantity] = useState(1);
 
   const currentUser = getCurrentUser();
+  const [reviews, setReviews] = useState([]);
+const [reviewRating, setReviewRating] = useState(5);
+const [reviewComment, setReviewComment] = useState("");
+const [submittingReview, setSubmittingReview] = useState(false);
 
   const cartCount = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.quantity, 0);
   }, [cart]);
+  const loadReviews = async (productMongoId) => {
+  try {
+    const res = await fetch(
+      `http://localhost:5000/api/reviews/product/${productMongoId}`
+    );
+    const data = await res.json();
 
-  useEffect(() => {
-    const loadProduct = async () => {
-      setLoading(true);
+    if (data.success) {
+      setReviews(data.reviews || []);
+    } else {
+      setReviews([]);
+    }
+  } catch (error) {
+    console.error("loadReviews error:", error);
+    setReviews([]);
+  }
+};
+const handleSubmitReview = async () => {
+  if (!currentUser) {
+    alert("Bạn cần đăng nhập để đánh giá.");
+    return;
+  }
 
-      const productResult = await fetchProductById(id);
-      const allProductsResult = await fetchProducts();
+  if (!product?._id) {
+    alert("Không tìm thấy sản phẩm.");
+    return;
+  }
 
-      if (productResult.success) {
-        const loadedProduct = productResult.product;
-        setProduct(loadedProduct);
-        setSelectedImage(loadedProduct?.images?.[0] || "");
-        setSelectedSize(loadedProduct?.sizes?.[0] || "");
-      } else {
-        setProduct(null);
+  try {
+    setSubmittingReview(true);
+
+    const res = await fetch("http://localhost:5000/api/reviews", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        productId: product._id,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        rating: reviewRating,
+        comment: reviewComment
+      })
+    });
+
+    const data = await res.json();
+    alert(data.message);
+
+    if (data.success) {
+      setReviewRating(5);
+      setReviewComment("");
+
+      const refreshedProduct = await fetchProductById(id);
+      if (refreshedProduct.success) {
+        setProduct(refreshedProduct.product);
       }
 
-      setAllProducts(allProductsResult.products || []);
-      setLoading(false);
-    };
+      await loadReviews(product._id);
+    }
+  } catch (error) {
+    console.error("handleSubmitReview error:", error);
+    alert("Không thể gửi đánh giá.");
+  } finally {
+    setSubmittingReview(false);
+  }
+};
 
-    loadProduct();
-  }, [id]);
+  useEffect(() => {
+  const loadProduct = async () => {
+    setLoading(true);
+
+    const productResult = await fetchProductById(id);
+    const allProductsResult = await fetchProducts();
+
+    if (productResult.success) {
+      const loadedProduct = productResult.product;
+      setProduct(loadedProduct);
+      setSelectedImage(loadedProduct?.images?.[0] || "");
+      setSelectedSize(loadedProduct?.sizes?.[0] || "");
+
+      if (loadedProduct?._id) {
+        await loadReviews(loadedProduct._id);
+      }
+    } else {
+      setProduct(null);
+      setReviews([]);
+    }
+
+    setAllProducts(allProductsResult.products || []);
+    setLoading(false);
+  };
+
+  loadProduct();
+}, [id]);
 
   if (loading) {
     return <div className="container">Loading product...</div>;
@@ -158,10 +233,14 @@ export default function ProductPage() {
 
         <section className="product-detail container">
           <div className="product-gallery">
-            <img src={selectedImage} alt={product.name} className="main-image" />
+           {selectedImage ? (
+  <img src={selectedImage} alt={product.name} className="main-image" />
+) : (
+  <div className="main-image no-image">No Image</div>
+)}
 
             <div className="thumbs">
-              {product.images.map((img, index) => (
+              {product.colors.map((img, index) => (
                 <img
                   key={index}
                   src={img}
@@ -177,8 +256,12 @@ export default function ProductPage() {
             <h1>{product.name}</h1>
 
             <div className="rating">
-              {"★".repeat(product.rating)} ({product.reviews})
-            </div>
+  {"★".repeat(Math.round(product.ratingAverage || 0))}
+  <span>
+    {" "}
+    {product.ratingAverage || 0} ({product.ratingCount || 0} đánh giá)
+  </span>
+</div>
 
             <div className="price">
               <span className="new">${product.price}</span>
@@ -202,7 +285,7 @@ export default function ProductPage() {
 
             <h4>Size</h4>
             <div className="sizes">
-              {product.sizes.map((size, index) => (
+              {(product.sizes || []).map((size, index) => (
                 <button
                   key={index}
                   className={`size ${selectedSize === size ? "active" : ""}`}
@@ -253,17 +336,64 @@ export default function ProductPage() {
 
           <table>
             <tbody>
-              <tr><td>Model</td><td>{product.specs.model}</td></tr>
-              <tr><td>Display</td><td>{product.specs.display}</td></tr>
-              <tr><td>Strap Color</td><td>{product.specs.strapColor}</td></tr>
-              <tr><td>Strap Material</td><td>{product.specs.strapMaterial}</td></tr>
-              <tr><td>Size</td><td>{product.specs.size}</td></tr>
-              <tr><td>Touchscreen</td><td>{product.specs.touchscreen}</td></tr>
-              <tr><td>Water Resistant</td><td>{product.specs.waterResistant}</td></tr>
-              <tr><td>Compatible OS</td><td>{product.specs.compatibleOS}</td></tr>
+             <tr><td>Model</td><td>{product.specs?.model}</td></tr>
+<tr><td>Display</td><td>{product.specs?.display}</td></tr>
+<tr><td>Strap Color</td><td>{product.specs?.strapColor}</td></tr>
+<tr><td>Strap Material</td><td>{product.specs?.strapMaterial}</td></tr>
+<tr><td>Size</td><td>{product.specs?.size}</td></tr>
+<tr><td>Touchscreen</td><td>{product.specs?.touchscreen}</td></tr>
+<tr><td>Water Resistant</td><td>{product.specs?.waterResistant}</td></tr>
+<tr><td>Compatible OS</td><td>{product.specs?.compatibleOS}</td></tr>
             </tbody>
           </table>
         </section>
+        <section className="reviews-section container">
+  <h2>Đánh giá sản phẩm</h2>
+
+  <div className="review-form">
+    <label>Số sao</label>
+    <select
+      value={reviewRating}
+      onChange={(e) => setReviewRating(Number(e.target.value))}
+    >
+      <option value={5}>5 sao</option>
+      <option value={4}>4 sao</option>
+      <option value={3}>3 sao</option>
+      <option value={2}>2 sao</option>
+      <option value={1}>1 sao</option>
+    </select>
+
+    <label>Nhận xét</label>
+    <textarea
+      value={reviewComment}
+      onChange={(e) => setReviewComment(e.target.value)}
+      placeholder="Chia sẻ trải nghiệm của bạn..."
+      rows={4}
+    />
+
+    <button onClick={handleSubmitReview} disabled={submittingReview}>
+      {submittingReview ? "Đang gửi..." : "Gửi đánh giá"}
+    </button>
+  </div>
+
+  <div className="review-list">
+    {reviews.length === 0 ? (
+      <p>Chưa có đánh giá nào.</p>
+    ) : (
+      reviews.map((review) => (
+        <div className="review-item" key={review._id}>
+          <div className="review-top">
+            <strong>{review.userName}</strong>
+            <span>{"★".repeat(review.rating)}</span>
+          </div>
+
+          <p>{review.comment || "Không có nhận xét."}</p>
+          <small>{new Date(review.createdAt).toLocaleString()}</small>
+        </div>
+      ))
+    )}
+  </div>
+</section>
 
         <section className="similar container">
           <h2>Similar Products</h2>
